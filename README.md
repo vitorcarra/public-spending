@@ -14,10 +14,29 @@
 - [ ] Deploy Metabase
 - [ ] Create visualization on metabase
 
+## Requirements
+*docker
+*terraform
+*jq
+*aws cli version 2
 
 ## Manual Configuration
 * Set up ~./credentials file
 * export AWS_PROFILE=<your_profile>
+* export AWS_REGION=<your_region>
 
 ## Docker Configuration
 > **WARNING**: This Dockerfile is using a famous public Docker image for Airflow. In case you use my example for any production reason, be aware of this and check for complience: https://hub.docker.com/r/puckel/docker-airflow
+
+## Setup
+```
+git clone git@github.com:vitorcarra/public-spending.git
+```
+
+### Airflow Image deployment
+This step will create the docker image, create AWS ECR and upload the image.
+Image name is: <PROJECT_NAME>-airflow
+```
+cd airflow
+bash setup.sh <PROJECT_NAME>
+```
