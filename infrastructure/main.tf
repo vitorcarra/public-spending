@@ -11,6 +11,7 @@ module "network" {
     source = "./network"
 
     project_name = var.project_name
+    allow_ip = var.allow_ip
 }
 
 module "ecs" {

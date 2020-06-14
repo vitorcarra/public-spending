@@ -40,3 +40,19 @@ Image name is: <PROJECT_NAME>-airflow
 cd airflow
 bash setup.sh <PROJECT_NAME>
 ```
+
+### Terraform Deploy
+
+* Manually create a S3 bucket to handle terraform state
+* Rename terraform_backend.tf.template to terraform_backend.tf
+* Modify terraform_backend.tf with bucket you have created
+* Rename terraform.tfvars.template to terraform.tfvars
+* Modify terraform.tfvars with your values
+
+```
+cd infrastructure
+terraform init
+terraform validate
+terraform plan -var-file terraform.tfvars
+terraform apply -var-file terraform.tfvars
+```
