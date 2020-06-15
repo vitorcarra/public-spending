@@ -17,4 +17,5 @@ resource "aws_db_instance" "default" {
   port                    = var.postgres_port
   vpc_security_group_ids = var.vpc_security_group_ids
   db_subnet_group_name   = aws_db_subnet_group.default.name
+  final_snapshot_identifier = "finalsnapshot"
 }
