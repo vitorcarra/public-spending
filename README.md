@@ -7,8 +7,8 @@
 * Metabase to create data visualization
 
 ## TODO
-- [ ] Create Airflow Dockerfile
-- [ ] Create shell scripts to build and deploy image on Amazon ECR
+- [x] Create Airflow Dockerfile
+- [x] Create shell scripts to build and deploy image on Amazon ECR
 - [ ] Create Terraform deployment scripts
 - [ ] Create data ingestion DAG
 - [ ] Deploy Metabase
