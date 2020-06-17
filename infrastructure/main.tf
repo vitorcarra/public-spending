@@ -15,6 +15,7 @@ module "network" {
     project_name = var.project_name
     allow_ip = var.allow_ip
     postgres_port = var.postgres_port
+    region = var.aws_region
 }
 
 module "ecs" {

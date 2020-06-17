@@ -57,7 +57,7 @@ resource "aws_route_table" "rt_private" {
   vpc_id = aws_vpc.main.id
 
   tags = {
-    Name = "rt-private"
+    Name = "${var.project_name}-rt-private"
     Project = var.project_name
   }
 }
@@ -81,7 +81,7 @@ resource "aws_route_table" "rt_public" {
   }
 
   tags = {
-    Name = "rt-public"
+    Name = "${var.project_name}-rt-public"
     Project = var.project_name
   }
 }
@@ -100,13 +100,31 @@ resource "aws_network_acl" "private" {
     protocol   = "-1"
     rule_no    = 100
     action     = "allow"
-    cidr_block = var.allow_ip
+    cidr_block = "192.168.1.0/24"
+    from_port  = 0
+    to_port    = 0
+  }
+
+  ingress {
+    protocol   = "-1"
+    rule_no    = 110
+    action     = "allow"
+    cidr_block = "192.168.2.0/24"
+    from_port  = 0
+    to_port    = 0
+  }
+
+  egress {
+    protocol   = "-1"
+    rule_no    = 100
+    action     = "allow"
+    cidr_block = "0.0.0.0/0"
     from_port  = 0
     to_port    = 0
   }
 
   tags = {
-    Name = "nacl-private"
+    Name = "${var.project_name}-nacl-private"
     Project = var.project_name
   }
 }
@@ -143,7 +161,7 @@ resource "aws_network_acl" "public" {
   }
 
   tags = {
-    Name = "nacl-public"
+    Name = "${var.project_name}-nacl-public"
     Project = var.project_name
   }
 }
@@ -170,6 +188,63 @@ resource "aws_security_group" "rds_sg" {
   }
 
   tags = {
+    Project = var.project_name
+    Name = "${var.project_name}-postgres-sg"
+  }
+}
+
+resource "aws_security_group" "vpc_allow_sg" {
+  name        = "${var.project_name}-vpc_allow_sg"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description = "Enable VPC connection"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = [aws_vpc.main.cidr_block]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Project = var.project_name
+    Name = "${var.project_name}-vpc_allow_sg"
+  }
+}
+
+
+# VPC Endpoints
+resource "aws_vpc_endpoint" "s3" {
+  vpc_id       = aws_vpc.main.id
+  service_name = "com.amazonaws.${var.region}.s3"
+  route_table_ids = [aws_route_table.rt_private.id]
+
+  tags = {
+    Name = "${var.project_name}-s3-vpce"
+    Project = var.project_name
+  }
+}
+
+resource "aws_vpc_endpoint" "ecr" {
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.${var.region}.ecr.dkr"
+  vpc_endpoint_type = "Interface"
+  subnet_ids        = [aws_subnet.private1.id, aws_subnet.private2.id]
+
+  security_group_ids = [
+    "${aws_security_group.vpc_allow_sg.id}",
+  ]
+
+  private_dns_enabled = true
+
+  tags = {
+    Name = "${var.project_name}-ecr-vpce"
     Project = var.project_name
   }
 }
