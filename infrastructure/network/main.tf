@@ -127,7 +127,7 @@ resource "aws_network_acl" "private" {
 
   ingress {
     protocol   = "tcp"
-    rule_no    = 120
+    rule_no    = 130
     action     = "allow"
     cidr_block = "0.0.0.0/0"
     from_port  = 443
@@ -230,7 +230,7 @@ resource "aws_security_group" "vpc_allow_sg" {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = aws_vpc_endpoint.s3.prefix_list_id
+    prefix_list_ids = [aws_vpc_endpoint.s3.prefix_list_id]
   }
 
   egress {
@@ -272,7 +272,43 @@ resource "aws_vpc_endpoint" "ecr" {
   private_dns_enabled = true
 
   tags = {
-    Name = "${var.project_name}-ecr-vpce"
+    Name = "${var.project_name}-ecr-dkr-vpce"
+    Project = var.project_name
+  }
+}
+
+resource "aws_vpc_endpoint" "ecr-api" {
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.${var.region}.ecr.api"
+  vpc_endpoint_type = "Interface"
+  subnet_ids        = [aws_subnet.private1.id, aws_subnet.private2.id]
+
+  security_group_ids = [
+    "${aws_security_group.vpc_allow_sg.id}",
+  ]
+
+  private_dns_enabled = true
+
+  tags = {
+    Name = "${var.project_name}-ecr-api-vpce"
+    Project = var.project_name
+  }
+}
+
+resource "aws_vpc_endpoint" "logs" {
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.${var.region}.logs"
+  vpc_endpoint_type = "Interface"
+  subnet_ids        = [aws_subnet.private1.id, aws_subnet.private2.id]
+
+  security_group_ids = [
+    "${aws_security_group.vpc_allow_sg.id}",
+  ]
+
+  private_dns_enabled = true
+
+  tags = {
+    Name = "${var.project_name}-logs-vpce"
     Project = var.project_name
   }
 }
