@@ -1,5 +1,7 @@
 resource "aws_vpc" "main" {
   cidr_block       = "192.168.0.0/16"
+  enable_dns_support = true
+  enable_dns_hostnames = true
 
   tags = {
     Name = var.project_name
@@ -114,6 +116,24 @@ resource "aws_network_acl" "private" {
     to_port    = 0
   }
 
+  ingress {
+    protocol   = "tcp"
+    rule_no    = 120
+    action     = "allow"
+    cidr_block = "0.0.0.0/0"
+    from_port  = 1024
+    to_port    = 65535
+  }
+
+  ingress {
+    protocol   = "tcp"
+    rule_no    = 120
+    action     = "allow"
+    cidr_block = "0.0.0.0/0"
+    from_port  = 443
+    to_port    = 443
+  }
+
   egress {
     protocol   = "-1"
     rule_no    = 100
@@ -203,6 +223,14 @@ resource "aws_security_group" "vpc_allow_sg" {
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = [aws_vpc.main.cidr_block]
+  }
+
+  ingress {
+    description = "Enable S3 endpoint"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = aws_vpc_endpoint.s3.prefix_list_id
   }
 
   egress {
