@@ -22,6 +22,13 @@ module "ecs" {
     source = "./ecs"
 
     project_name = var.project_name
+    role_ecs_arn = module.iam.role_ecs_arn
+    postgres_port          = var.postgres_port
+    postgres_user          = var.postgres_user
+    postgres_password      = var.postgres_password
+    postgres_db            = var.postgres_db
+    postgres_host          = module.rds.rds_host
+    docker_image           = "teste"
 }
 
 module "rds" {

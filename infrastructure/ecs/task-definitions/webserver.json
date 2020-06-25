@@ -1,0 +1,21 @@
+[
+    {
+        "name": "webserver",
+        "image": "teste",
+        "essential": true,
+        "command": ["webserver"],
+        "portMappings": [
+            {
+                "containerPort": 8080,
+                "hostPort": 8080
+            }
+        ],
+        "environment": [
+            { "name": "POSTGRES_USER", "value": "${var.postgres_user}"},
+            { "name": "POSTGRES_PORT", "value": "${var.postgres_port}"},
+            { "name": "POSTGRES_HOST", "value": "${var.postgres_host}"},
+            { "name": "POSTGRES_DB", "value": "${var.postgres_db}"},
+            { "name": "POSTGRES_PASSWORD", "value": "${var.postgres_password}"}
+        ]
+    }
+]
