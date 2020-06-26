@@ -1,11 +1,15 @@
-resource "aws_ecs_cluster" "airflow-celery1" {
+resource "aws_ecs_cluster" "airflow_celery1" {
   name = "airflow-celery1"
   capacity_providers = ["FARGATE"]
+
+  tags = {
+    Project = var.project_name
+  }
 }
 
 
 resource "aws_ecs_task_definition" "webserver" {
-  family                = "service"
+  family                = "webserver"
   #container_definitions = file("${path.module}/task-definitions/webserver.json")
   requires_compatibilities = ["FARGATE"]
 
@@ -13,8 +17,17 @@ resource "aws_ecs_task_definition" "webserver" {
   [
     {
         "name": "webserver",
-        "image": "teste",
+        "image": "${var.docker_image}",
         "essential": true,
+        "logConfiguration": {
+            "logDriver": "awslogs",
+            "options": {
+                "awslogs-create-group": "true",
+                "awslogs-group": "ecs-airflow",
+                "awslogs-region": "${var.region}",
+                "awslogs-stream-prefix": "airflow-werbserver"
+            }
+        },
         "command": ["webserver"],
         "portMappings": [
             {
@@ -39,4 +52,21 @@ resource "aws_ecs_task_definition" "webserver" {
   network_mode = "awsvpc"
   cpu = 512
   memory = 1024
+}
+
+
+resource "aws_ecs_service" "webserver" {
+  name            = "webserver"
+  cluster         = aws_ecs_cluster.airflow_celery1.id
+  task_definition = aws_ecs_task_definition.webserver.arn
+  desired_count   = 1
+  launch_type = "FARGATE"
+
+  #depends_on      = ["aws_iam_role_policy.foo"]
+
+  network_configuration {
+    assign_public_ip = false
+    subnets = [var.private_subnet_group_id1, var.private_subnet_group_id2]
+    security_groups = var.webserver_sg
+  }
 }

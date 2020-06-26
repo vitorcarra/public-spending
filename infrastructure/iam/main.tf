@@ -191,7 +191,8 @@ resource "aws_iam_policy" "policy_ecs" {
                 "s3:ReplicateDelete",
                 "rds:RestoreDBInstanceToPointInTime",
                 "logs:CreateLogStream",
-                "logs:PutLogEvents"
+                "logs:PutLogEvents",
+                "logs:CreateLogGroup"
             ],
             "Resource": "*"
         }

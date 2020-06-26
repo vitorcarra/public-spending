@@ -246,6 +246,39 @@ resource "aws_security_group" "vpc_allow_sg" {
   }
 }
 
+resource "aws_security_group" "webserver_sg" {
+  name        = "${var.project_name}-webserver_sg"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description = "Enable VPC connection"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = [aws_vpc.main.cidr_block]
+  }
+
+  ingress {
+    description = "Enable HTTP"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    prefix_list_ids = [aws_vpc_endpoint.s3.prefix_list_id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Project = var.project_name
+    Name = "${var.project_name}-webserver_sg"
+  }
+}
+
 
 # VPC Endpoints
 resource "aws_vpc_endpoint" "s3" {

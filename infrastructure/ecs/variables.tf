@@ -1,4 +1,5 @@
 variable "project_name" {}
+variable "region" {}
 variable "role_ecs_arn" {}
 variable "postgres_db" {}
 variable "postgres_user" {}
@@ -6,3 +7,6 @@ variable "postgres_password" {}
 variable "postgres_port" {}
 variable "postgres_host" {}
 variable "docker_image" {}
+variable "private_subnet_group_id1" {}
+variable "private_subnet_group_id2" {}
+variable "webserver_sg" {}
