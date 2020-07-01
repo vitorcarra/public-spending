@@ -13,3 +13,7 @@ output "private_subnet_group_id2" {
 output "webserver_sg" {
     value = [aws_security_group.webserver_sg.id]
 }
+
+output "alb_webserver_target_group" {
+    value = aws_lb_target_group.alb_tg_webserver.arn
+}

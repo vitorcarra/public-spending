@@ -54,7 +54,6 @@ resource "aws_ecs_task_definition" "webserver" {
   memory = 1024
 }
 
-
 resource "aws_ecs_service" "webserver" {
   name            = "webserver"
   cluster         = aws_ecs_cluster.airflow_celery1.id
@@ -69,4 +68,11 @@ resource "aws_ecs_service" "webserver" {
     subnets = [var.private_subnet_group_id1, var.private_subnet_group_id2]
     security_groups = var.webserver_sg
   }
+
+  load_balancer {
+    target_group_arn = var.alb_webserver_target_group
+    container_name   = "webserver"
+    container_port   = 8080
+  }
+
 }

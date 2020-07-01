@@ -10,3 +10,4 @@ variable "docker_image" {}
 variable "private_subnet_group_id1" {}
 variable "private_subnet_group_id2" {}
 variable "webserver_sg" {}
+variable "alb_webserver_target_group" {}

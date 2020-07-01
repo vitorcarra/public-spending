@@ -53,8 +53,21 @@ resource "aws_subnet" "public" {
   vpc_id     = aws_vpc.main.id
   cidr_block = "192.168.3.0/24"
 
+  availability_zone_id = data.aws_availability_zones.available.zone_ids[0]
+
   tags = {
     Name = "${var.project_name}-public"
+    Project = var.project_name
+  }
+}
+
+resource "aws_subnet" "public2" {
+  vpc_id     = aws_vpc.main.id
+  cidr_block = "192.168.4.0/24"
+  availability_zone_id = data.aws_availability_zones.available.zone_ids[1]
+
+  tags = {
+    Name = "${var.project_name}-public2"
     Project = var.project_name
   }
 }
@@ -115,6 +128,12 @@ resource "aws_route_table_association" "rt_assoc_public" {
   route_table_id = aws_route_table.rt_public.id
 }
 
+resource "aws_route_table_association" "rt_assoc_public2" {
+  subnet_id      = aws_subnet.public2.id
+  route_table_id = aws_route_table.rt_public.id
+}
+
+
 
 resource "aws_network_acl" "private" {
   vpc_id = aws_vpc.main.id
@@ -173,7 +192,7 @@ resource "aws_network_acl" "private" {
 
 resource "aws_network_acl" "public" {
   vpc_id = aws_vpc.main.id
-  subnet_ids = [aws_subnet.public.id]
+  subnet_ids = [aws_subnet.public.id, aws_subnet.public2.id]
 
   ingress {
     protocol   = "tcp"
@@ -201,6 +220,25 @@ resource "aws_network_acl" "public" {
     from_port  = 1024
     to_port    = 65535
   }
+
+  ingress {
+    protocol   = "tcp"
+    rule_no    = 140
+    action     = "allow"
+    cidr_block = "0.0.0.0/0"
+    from_port  = 8080
+    to_port    = 8080
+  }
+
+  ingress {
+    protocol   = "tcp"
+    rule_no    = 150
+    action     = "allow"
+    cidr_block = "0.0.0.0/0"
+    from_port  = 1024
+    to_port    = 65535
+  }
+  
 
   tags = {
     Name = "${var.project_name}-nacl-public"
@@ -281,11 +319,19 @@ resource "aws_security_group" "webserver_sg" {
   }
 
   ingress {
-    description = "Enable HTTP"
+    description = "Enable HTTP to S3 Endpoint"
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
     prefix_list_ids = [aws_vpc_endpoint.s3.prefix_list_id]
+  }
+
+  ingress {
+    description = "Enable HTTP 8080"
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   egress {
@@ -301,6 +347,56 @@ resource "aws_security_group" "webserver_sg" {
   }
 }
 
+resource "aws_security_group" "alb_sg" {
+  name        = "${var.project_name}-alb_sg"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description = "Enable HTTP 8080"
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "Enable HTTP 8080"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "Enable SG Webserver"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    security_groups = [aws_security_group.webserver_sg.id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Project = var.project_name
+    Name = "${var.project_name}-alb_sg"
+  }
+}
+
+resource "aws_security_group_rule" "sgr_webserver" {
+  type              = "ingress"
+  description = "Enable all traffic alb"
+  from_port         = 0
+  to_port           = 0
+  protocol          = "-1"
+  source_security_group_id = aws_security_group.alb_sg.id
+  security_group_id = aws_security_group.webserver_sg.id
+}
 
 # VPC Endpoints
 resource "aws_vpc_endpoint" "s3" {
@@ -365,5 +461,38 @@ resource "aws_vpc_endpoint" "logs" {
   tags = {
     Name = "${var.project_name}-logs-vpce"
     Project = var.project_name
+  }
+}
+
+
+# ALB
+resource "aws_lb" "alb_airflow" {
+  name               = "${var.project_name}-alb-airflow"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.alb_sg.id]
+  subnets            = [aws_subnet.public.id, aws_subnet.public2.id]
+
+  enable_deletion_protection = false
+
+  tags = {
+    Environment = "production"
+  }
+}
+
+resource "aws_lb_target_group" "alb_tg_webserver" {
+  name        = "albwebserver"
+  port        = 8080
+  protocol    = "HTTP"
+  target_type = "ip"
+  vpc_id      = aws_vpc.main.id
+
+  health_check {
+    protocol = "HTTP"
+    path = "/"
+    port = 8080
+    matcher = 302
+    interval = 15
+    timeout = 10
   }
 }

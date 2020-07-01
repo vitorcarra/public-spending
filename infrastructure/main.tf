@@ -31,7 +31,8 @@ module "ecs" {
     docker_image           = "527562940573.dkr.ecr.us-east-2.amazonaws.com/public-spending_repository:latest"
     private_subnet_group_id1 = module.network.private_subnet_group_id1
     private_subnet_group_id2 = module.network.private_subnet_group_id2
-    webserver_sg           = module.network.webserver_sg
+    webserver_sg           =     module.network.webserver_sg
+    alb_webserver_target_group = module.network.alb_webserver_target_group
 }
 
 module "rds" {
