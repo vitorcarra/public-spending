@@ -28,10 +28,13 @@ module "ecs" {
     postgres_password      = var.postgres_password
     postgres_db            = var.postgres_db
     postgres_host          = module.rds.rds_host
-    docker_image           = "527562940573.dkr.ecr.us-east-2.amazonaws.com/public-spending_repository:latest"
+    docker_image_airflow   = var.docker_image_airflow
+    docker_image_redis     = var.docker_image_redis
     private_subnet_group_id1 = module.network.private_subnet_group_id1
     private_subnet_group_id2 = module.network.private_subnet_group_id2
     webserver_sg           =     module.network.webserver_sg
+    redis_sg           =     module.network.redis_sg
+    scheduler_sg           =     module.network.scheduler_sg
     alb_webserver_target_group = module.network.alb_webserver_target_group
 }
 

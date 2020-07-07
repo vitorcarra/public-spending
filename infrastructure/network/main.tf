@@ -407,6 +407,106 @@ resource "aws_security_group_rule" "sgr_webserver" {
   security_group_id = aws_security_group.webserver_sg.id
 }
 
+resource "aws_security_group" "redis_sg" {
+  name        = "${var.project_name}-redis-sg"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description = "Enable airflow webserver access"
+    from_port   = 6379
+    to_port     = 6379
+    protocol    = "tcp"
+    security_groups = [aws_security_group.webserver_sg.id]
+  }
+
+  ingress {
+    description = "Enable VPC connection"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = [aws_vpc.main.cidr_block]
+  }
+
+  ingress {
+    description = "Enable HTTP to S3 Endpoint"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    prefix_list_ids = [aws_vpc_endpoint.s3.prefix_list_id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Project = var.project_name
+    Name = "${var.project_name}-redis-sg"
+  }
+}
+
+resource "aws_security_group" "scheduler_sg" {
+  name        = "${var.project_name}-scheduler-sg"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description = "Enable airflow webserver access"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "tcp"
+    security_groups = [aws_security_group.webserver_sg.id]
+  }
+
+  ingress {
+    description = "Enable redis access"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "tcp"
+    security_groups = [aws_security_group.redis_sg.id]
+  }
+
+  ingress {
+    description = "Enable VPC connection"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = [aws_vpc.main.cidr_block]
+  }
+
+  ingress {
+    description = "Enable HTTP to S3 Endpoint"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    prefix_list_ids = [aws_vpc_endpoint.s3.prefix_list_id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Project = var.project_name
+    Name = "${var.project_name}-scheduler-sg"
+  }
+}
+
+resource "aws_security_group_rule" "sgr_redis" {
+  type              = "ingress"
+  description = "Enable scheduler"
+  from_port   = 6379
+  to_port     = 6379
+  protocol    = "tcp"
+  source_security_group_id = aws_security_group.scheduler_sg.id
+  security_group_id = aws_security_group.redis_sg.id
+}
+
 # VPC Endpoints
 resource "aws_vpc_endpoint" "s3" {
   vpc_id       = aws_vpc.main.id
@@ -517,3 +617,48 @@ resource "aws_lb_listener" "alb_webserver_listener" {
     target_group_arn = aws_lb_target_group.alb_tg_webserver.arn
   }
 }
+
+
+resource "aws_lb" "alb_redis" {
+  name               = "${var.project_name}-alb-redis"
+  internal           = true
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.redis_sg.id]
+  subnets            = [aws_subnet.private1.id, aws_subnet.private2.id]
+
+  enable_deletion_protection = false
+
+  tags = {
+    Environment = "production"
+  }
+}
+
+resource "aws_lb_target_group" "alb_tg_redis" {
+  name        = "albwredis"
+  port        = 6379
+  protocol    = "HTTP"
+  target_type = "ip"
+  vpc_id      = aws_vpc.main.id
+
+  health_check {
+    protocol = "HTTP"
+    path = "/"
+    port = 6379
+    matcher = 302
+    interval = 60
+    timeout = 30
+  }
+
+  depends_on = [aws_lb.alb_redis]
+}
+
+resource "aws_lb_listener" "alb_redis_listener" {
+  load_balancer_arn = aws_lb.alb_redis.arn
+  port              = "6379"
+  protocol          = "HTTP"
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.alb_tg_redis.arn
+  }
+}
+

@@ -17,3 +17,11 @@ output "webserver_sg" {
 output "alb_webserver_target_group" {
     value = aws_lb_target_group.alb_tg_webserver.arn
 }
+
+output "redis_sg" {
+    value = [aws_security_group.redis_sg.id]
+}
+
+output "scheduler_sg" {
+    value = [aws_security_group.scheduler_sg.id]
+}
