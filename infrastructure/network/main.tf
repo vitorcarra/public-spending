@@ -175,6 +175,15 @@ resource "aws_network_acl" "private" {
     to_port    = 443
   }
 
+  ingress {
+    protocol   = "tcp"
+    rule_no    = 140
+    action     = "allow"
+    cidr_block = "0.0.0.0/0"
+    from_port  = 8080
+    to_port    = 8080
+  }
+
   egress {
     protocol   = "-1"
     rule_no    = 100
@@ -492,7 +501,19 @@ resource "aws_lb_target_group" "alb_tg_webserver" {
     path = "/"
     port = 8080
     matcher = 302
-    interval = 15
-    timeout = 10
+    interval = 60
+    timeout = 30
+  }
+
+  depends_on = [aws_lb.alb_airflow]
+}
+
+resource "aws_lb_listener" "alb_webserver_listener" {
+  load_balancer_arn = aws_lb.alb_airflow.arn
+  port              = "8080"
+  protocol          = "HTTP"
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.alb_tg_webserver.arn
   }
 }
