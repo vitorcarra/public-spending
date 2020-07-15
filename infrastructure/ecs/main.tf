@@ -159,6 +159,7 @@ resource "aws_ecs_task_definition" "scheduler" {
         "name": "scheduler",
         "image": "${var.docker_image_airflow}",
         "essential": true,
+        "command": ["scheduler"],
         "logConfiguration": {
             "logDriver": "awslogs",
             "options": {
@@ -174,6 +175,8 @@ resource "aws_ecs_task_definition" "scheduler" {
             { "name": "POSTGRES_HOST", "value": "${var.postgres_host}"},
             { "name": "POSTGRES_DB", "value": "${var.postgres_db}"},
             { "name": "POSTGRES_PASSWORD", "value": "${var.postgres_password}"},
+            { "name": "EXECUTOR", "value": "Celery"},
+            { "name": "LOAD_EX", "value": "n"},
             { "name": "REDIS_HOST", "value": "${var.redis_host}"}
         ]
     }
@@ -203,3 +206,122 @@ resource "aws_ecs_service" "scheduler" {
     security_groups = var.scheduler_sg
   }
 }
+
+
+############ Flower #################
+resource "aws_ecs_task_definition" "flower" {
+  family                = "flower"
+  #container_definitions = file("${path.module}/task-definitions/webserver.json")
+  requires_compatibilities = ["FARGATE"]
+
+  container_definitions = <<TASK_DEFINITION
+  [
+    {
+        "name": "flower",
+        "image": "${var.docker_image_airflow}",
+        "essential": true,
+        "command": ["flower"],
+        "portMappings": [
+          {
+              "containerPort": 5555,
+              "hostPort": 5555
+          }
+        ],
+        "logConfiguration": {
+            "logDriver": "awslogs",
+            "options": {
+                "awslogs-create-group": "true",
+                "awslogs-group": "ecs-airflow",
+                "awslogs-region": "${var.region}",
+                "awslogs-stream-prefix": "airflow-flower"
+            }
+        },
+        "environment": [
+            { "name": "REDIS_HOST", "value": "${var.redis_host}"}
+        ]
+    }
+  ]
+  TASK_DEFINITION
+
+  task_role_arn = var.role_ecs_arn
+  execution_role_arn = var.role_ecs_arn
+
+  network_mode = "awsvpc"
+  cpu = 1024
+  memory = 2048
+}
+
+resource "aws_ecs_service" "flower" {
+  name            = "flower"
+  cluster         = aws_ecs_cluster.airflow_celery1.id
+  task_definition = aws_ecs_task_definition.flower.arn
+  desired_count   = 1
+  launch_type = "FARGATE"
+
+  #depends_on      = ["aws_iam_role_policy.foo"]
+
+  network_configuration {
+    assign_public_ip = false
+    subnets = [var.private_subnet_group_id1, var.private_subnet_group_id2]
+    security_groups = var.flower_sg
+  }
+}
+
+############ Worker #################
+resource "aws_ecs_task_definition" "worker" {
+  family                = "worker"
+  #container_definitions = file("${path.module}/task-definitions/webserver.json")
+  requires_compatibilities = ["FARGATE"]
+
+  container_definitions = <<TASK_DEFINITION
+  [
+    {
+        "name": "worker",
+        "image": "${var.docker_image_airflow}",
+        "essential": true,
+        "command": ["worker"],
+        "logConfiguration": {
+            "logDriver": "awslogs",
+            "options": {
+                "awslogs-create-group": "true",
+                "awslogs-group": "ecs-airflow",
+                "awslogs-region": "${var.region}",
+                "awslogs-stream-prefix": "airflow-worker"
+            }
+        },
+        "environment": [
+            { "name": "POSTGRES_USER", "value": "${var.postgres_user}"},
+            { "name": "POSTGRES_PORT", "value": "${var.postgres_port}"},
+            { "name": "POSTGRES_HOST", "value": "${var.postgres_host}"},
+            { "name": "POSTGRES_DB", "value": "${var.postgres_db}"},
+            { "name": "POSTGRES_PASSWORD", "value": "${var.postgres_password}"},
+            { "name": "REDIS_HOST", "value": "${var.redis_host}"}
+        ]
+    }
+  ]
+  TASK_DEFINITION
+
+  task_role_arn = var.role_ecs_arn
+  execution_role_arn = var.role_ecs_arn
+
+  network_mode = "awsvpc"
+  cpu = 1024
+  memory = 2048
+}
+
+resource "aws_ecs_service" "worker" {
+  name            = "worker"
+  cluster         = aws_ecs_cluster.airflow_celery1.id
+  task_definition = aws_ecs_task_definition.worker.arn
+  desired_count   = 1
+  launch_type = "FARGATE"
+
+  #depends_on      = ["aws_iam_role_policy.foo"]
+
+  network_configuration {
+    assign_public_ip = false
+    subnets = [var.private_subnet_group_id1, var.private_subnet_group_id2]
+    security_groups = var.worker_sg
+  }
+}
+

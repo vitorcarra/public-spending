@@ -407,6 +407,16 @@ resource "aws_security_group_rule" "sgr_webserver" {
   security_group_id = aws_security_group.webserver_sg.id
 }
 
+resource "aws_security_group_rule" "sgr_webserver1" {
+  type              = "ingress"
+  description = "Enable workers"
+  from_port         = 0
+  to_port           = 0
+  protocol          = "-1"
+  source_security_group_id = aws_security_group.worker_sg.id
+  security_group_id = aws_security_group.webserver_sg.id
+}
+
 resource "aws_security_group" "redis_sg" {
   name        = "${var.project_name}-redis-sg"
   vpc_id      = aws_vpc.main.id
@@ -445,6 +455,85 @@ resource "aws_security_group" "redis_sg" {
   tags = {
     Project = var.project_name
     Name = "${var.project_name}-redis-sg"
+  }
+}
+
+resource "aws_security_group_rule" "sgr_redis" {
+  type              = "ingress"
+  description = "Enable scheduler"
+  from_port   = 6379
+  to_port     = 6379
+  protocol    = "tcp"
+  source_security_group_id = aws_security_group.scheduler_sg.id
+  security_group_id = aws_security_group.redis_sg.id
+}
+
+resource "aws_security_group_rule" "sgr_redis1" {
+  type              = "ingress"
+  description = "Enable worker"
+  from_port   = 6379
+  to_port     = 6379
+  protocol    = "tcp"
+  source_security_group_id = aws_security_group.worker_sg.id
+  security_group_id = aws_security_group.redis_sg.id
+}
+
+resource "aws_security_group_rule" "sgr_redis2" {
+  type              = "ingress"
+  description = "Enable flower"
+  from_port   = 6379
+  to_port     = 6379
+  protocol    = "tcp"
+  source_security_group_id = aws_security_group.flower_sg.id
+  security_group_id = aws_security_group.redis_sg.id
+}
+
+resource "aws_security_group" "worker_sg" {
+  name        = "${var.project_name}-worker-sg"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description = "Enable airflow webserver access"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "tcp"
+    security_groups = [aws_security_group.webserver_sg.id]
+  }
+
+  ingress {
+    description = "Enable redis access"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "tcp"
+    security_groups = [aws_security_group.redis_sg.id]
+  }
+
+  ingress {
+    description = "Enable VPC connection"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = [aws_vpc.main.cidr_block]
+  }
+
+  ingress {
+    description = "Enable HTTP to S3 Endpoint"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    prefix_list_ids = [aws_vpc_endpoint.s3.prefix_list_id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Project = var.project_name
+    Name = "${var.project_name}-worker-sg"
   }
 }
 
@@ -497,14 +586,53 @@ resource "aws_security_group" "scheduler_sg" {
   }
 }
 
-resource "aws_security_group_rule" "sgr_redis" {
-  type              = "ingress"
-  description = "Enable scheduler"
-  from_port   = 6379
-  to_port     = 6379
-  protocol    = "tcp"
-  source_security_group_id = aws_security_group.scheduler_sg.id
-  security_group_id = aws_security_group.redis_sg.id
+resource "aws_security_group" "flower_sg" {
+  name        = "${var.project_name}-flower-sg"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description = "Enable airflow webserver access"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "tcp"
+    security_groups = [aws_security_group.webserver_sg.id]
+  }
+
+  ingress {
+    description = "Enable redis access"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "tcp"
+    security_groups = [aws_security_group.redis_sg.id]
+  }
+
+  ingress {
+    description = "Enable VPC connection"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = [aws_vpc.main.cidr_block]
+  }
+
+  ingress {
+    description = "Enable HTTP to S3 Endpoint"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    prefix_list_ids = [aws_vpc_endpoint.s3.prefix_list_id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Project = var.project_name
+    Name = "${var.project_name}-flower-sg"
+  }
 }
 
 # VPC Endpoints

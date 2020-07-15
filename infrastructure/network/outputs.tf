@@ -33,3 +33,11 @@ output "redis_sg" {
 output "scheduler_sg" {
     value = [aws_security_group.scheduler_sg.id]
 }
+
+output "flower_sg" {
+    value = [aws_security_group.flower_sg.id]
+}
+
+output "worker_sg" {
+    value = [aws_security_group.worker_sg.id]
+}

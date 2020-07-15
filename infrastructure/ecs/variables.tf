@@ -13,6 +13,8 @@ variable "private_subnet_group_id2" {}
 variable "webserver_sg" {}
 variable "redis_sg" {}
 variable "scheduler_sg" {}
+variable "worker_sg" {}
+variable "flower_sg" {}
 variable "alb_webserver_target_group" {}
 variable "alb_redis_target_group" {}
 variable "redis_host" {}

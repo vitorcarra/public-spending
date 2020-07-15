@@ -35,6 +35,8 @@ module "ecs" {
     webserver_sg           =     module.network.webserver_sg
     redis_sg           =     module.network.redis_sg
     scheduler_sg           =     module.network.scheduler_sg
+    flower_sg           =     module.network.flower_sg
+    worker_sg           =     module.network.worker_sg
     alb_webserver_target_group = module.network.alb_webserver_target_group
     alb_redis_target_group = module.network.alb_redis_target_group
     redis_host             = module.network.redis_host
