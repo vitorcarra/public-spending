@@ -18,6 +18,14 @@ output "alb_webserver_target_group" {
     value = aws_lb_target_group.alb_tg_webserver.arn
 }
 
+output "alb_redis_target_group" {
+    value = aws_lb_target_group.alb_tg_redis.arn
+}
+
+output "redis_host" {
+    value = aws_lb.alb_redis.dns_name
+}
+
 output "redis_sg" {
     value = [aws_security_group.redis_sg.id]
 }

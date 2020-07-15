@@ -622,8 +622,7 @@ resource "aws_lb_listener" "alb_webserver_listener" {
 resource "aws_lb" "alb_redis" {
   name               = "${var.project_name}-alb-redis"
   internal           = true
-  load_balancer_type = "application"
-  security_groups    = [aws_security_group.redis_sg.id]
+  load_balancer_type = "network"
   subnets            = [aws_subnet.private1.id, aws_subnet.private2.id]
 
   enable_deletion_protection = false
@@ -636,17 +635,13 @@ resource "aws_lb" "alb_redis" {
 resource "aws_lb_target_group" "alb_tg_redis" {
   name        = "albwredis"
   port        = 6379
-  protocol    = "HTTP"
+  protocol    = "TCP"
   target_type = "ip"
   vpc_id      = aws_vpc.main.id
 
-  health_check {
-    protocol = "HTTP"
-    path = "/"
-    port = 6379
-    matcher = 302
-    interval = 60
-    timeout = 30
+  stickiness {
+    enabled = false
+    type = "lb_cookie"
   }
 
   depends_on = [aws_lb.alb_redis]
@@ -655,7 +650,7 @@ resource "aws_lb_target_group" "alb_tg_redis" {
 resource "aws_lb_listener" "alb_redis_listener" {
   load_balancer_arn = aws_lb.alb_redis.arn
   port              = "6379"
-  protocol          = "HTTP"
+  protocol          = "TCP"
   default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.alb_tg_redis.arn

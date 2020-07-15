@@ -138,6 +138,12 @@ resource "aws_ecs_service" "redis" {
     subnets = [var.private_subnet_group_id1, var.private_subnet_group_id2]
     security_groups = var.redis_sg
   }
+
+  load_balancer {
+    target_group_arn = var.alb_redis_target_group
+    container_name   = "redis"
+    container_port   = 6379
+  }
 }
 
 
@@ -168,7 +174,7 @@ resource "aws_ecs_task_definition" "scheduler" {
             { "name": "POSTGRES_HOST", "value": "${var.postgres_host}"},
             { "name": "POSTGRES_DB", "value": "${var.postgres_db}"},
             { "name": "POSTGRES_PASSWORD", "value": "${var.postgres_password}"},
-            { "name": "REDIS_HOST", "value": "redis.airflow.celery"}
+            { "name": "REDIS_HOST", "value": "${var.redis_host}"}
         ]
     }
   ]

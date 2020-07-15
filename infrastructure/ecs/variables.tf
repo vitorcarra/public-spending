@@ -14,3 +14,5 @@ variable "webserver_sg" {}
 variable "redis_sg" {}
 variable "scheduler_sg" {}
 variable "alb_webserver_target_group" {}
+variable "alb_redis_target_group" {}
+variable "redis_host" {}
