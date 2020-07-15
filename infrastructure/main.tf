@@ -17,6 +17,12 @@ module "network" {
     region = var.aws_region
 }
 
+module "efs" {
+    source = "./efs"
+    project_name = var.project_name
+    efs_subnet_id = module.network.private_subnet_group_id1
+}
+
 module "ecs" {
     source = "./ecs"
 
