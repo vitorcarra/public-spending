@@ -635,6 +635,55 @@ resource "aws_security_group" "flower_sg" {
   }
 }
 
+resource "aws_security_group" "efs_sg" {
+  name        = "${var.project_name}-efs-sg"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description = "Enable airflow webserver access"
+    from_port   = 2049
+    to_port     = 2049
+    protocol    = "tcp"
+    security_groups = [aws_security_group.webserver_sg.id]
+  }
+
+  ingress {
+    description = "Enable redis access"
+    from_port   = 2049
+    to_port     = 2049
+    protocol    = "tcp"
+    security_groups = [aws_security_group.redis_sg.id]
+  }
+
+  ingress {
+    description = "Enable flower access"
+    from_port   = 2049
+    to_port     = 2049
+    protocol    = "tcp"
+    security_groups = [aws_security_group.flower_sg.id]
+  }
+
+  ingress {
+    description = "Enable VPC connection"
+    from_port   = 2049
+    to_port     = 2049
+    protocol    = "tcp"
+    cidr_blocks = [aws_vpc.main.cidr_block]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Project = var.project_name
+    Name = "${var.project_name}-efs-sg"
+  }
+}
+
 # VPC Endpoints
 resource "aws_vpc_endpoint" "s3" {
   vpc_id       = aws_vpc.main.id

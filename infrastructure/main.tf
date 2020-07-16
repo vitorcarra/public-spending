@@ -21,6 +21,7 @@ module "efs" {
     source = "./efs"
     project_name = var.project_name
     efs_subnet_id = module.network.private_subnet_group_id1
+    efs_sg_id     = module.network.efs_sg_id
 }
 
 module "ecs" {
@@ -46,6 +47,8 @@ module "ecs" {
     alb_webserver_target_group = module.network.alb_webserver_target_group
     alb_redis_target_group = module.network.alb_redis_target_group
     redis_host             = module.network.redis_host
+    airflow_efs_id           = module.efs.airflow_efs_id
+    airflow_efs_access_id    =  module.efs.airflow_efs_access_id
 }
 
 module "rds" {

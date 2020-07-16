@@ -36,6 +36,12 @@ resource "aws_ecs_task_definition" "webserver" {
                 "hostPort": 8080
             }
         ],
+        "mountPoints": [
+          {
+              "containerPath": "./airflow/dags",
+              "sourceVolume": "airflow-dags-efs"
+          }
+        ],
         "environment": [
             { "name": "POSTGRES_USER", "value": "${var.postgres_user}"},
             { "name": "POSTGRES_PORT", "value": "${var.postgres_port}"},
@@ -47,6 +53,15 @@ resource "aws_ecs_task_definition" "webserver" {
   ]
   TASK_DEFINITION
 
+  volume {
+    name = "airflow-dags-efs"
+
+    efs_volume_configuration {
+      file_system_id          = var.airflow_efs_id
+      root_directory          = "/"
+    }
+  }
+
   task_role_arn = var.role_ecs_arn
   execution_role_arn = var.role_ecs_arn
 
@@ -57,6 +72,7 @@ resource "aws_ecs_task_definition" "webserver" {
 
 resource "aws_ecs_service" "webserver" {
   name            = "webserver"
+  platform_version = "1.4.0"
   cluster         = aws_ecs_cluster.airflow_celery1.id
   task_definition = aws_ecs_task_definition.webserver.arn
   desired_count   = 1

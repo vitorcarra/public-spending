@@ -18,3 +18,5 @@ variable "flower_sg" {}
 variable "alb_webserver_target_group" {}
 variable "alb_redis_target_group" {}
 variable "redis_host" {}
+variable "airflow_efs_id" {}
+variable "airflow_efs_access_id" {}

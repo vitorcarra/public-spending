@@ -41,3 +41,7 @@ output "flower_sg" {
 output "worker_sg" {
     value = [aws_security_group.worker_sg.id]
 }
+
+output "efs_sg_id" {
+    value = aws_security_group.efs_sg.id
+}
