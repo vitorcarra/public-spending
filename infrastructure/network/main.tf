@@ -222,12 +222,12 @@ resource "aws_network_acl" "public" {
   }
 
   egress {
-    protocol   = "tcp"
-    rule_no    = 130
+    protocol   = "-1"
+    rule_no    = 100
     action     = "allow"
     cidr_block = "0.0.0.0/0"
-    from_port  = 1024
-    to_port    = 65535
+    from_port  = 0
+    to_port    = 0
   }
 
   ingress {
@@ -750,6 +750,24 @@ resource "aws_vpc_endpoint" "logs" {
   }
 }
 
+resource "aws_vpc_endpoint" "ssm" {
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.${var.region}.ssm"
+  vpc_endpoint_type = "Interface"
+  subnet_ids        = [aws_subnet.private1.id, aws_subnet.private2.id]
+
+  security_group_ids = [
+    "${aws_security_group.vpc_allow_sg.id}",
+  ]
+
+  private_dns_enabled = true
+
+  tags = {
+    Name = "${var.project_name}-ssm-vpce"
+    Project = var.project_name
+  }
+}
+
 
 # ALB
 resource "aws_lb" "alb_airflow" {
@@ -778,8 +796,10 @@ resource "aws_lb_target_group" "alb_tg_webserver" {
     path = "/"
     port = 8080
     matcher = 302
-    interval = 60
-    timeout = 30
+    interval = 160
+    timeout = 120
+    healthy_threshold = 10
+    unhealthy_threshold = 10
   }
 
   depends_on = [aws_lb.alb_airflow]
@@ -792,45 +812,6 @@ resource "aws_lb_listener" "alb_webserver_listener" {
   default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.alb_tg_webserver.arn
-  }
-}
-
-
-resource "aws_lb" "alb_redis" {
-  name               = "${var.project_name}-alb-redis"
-  internal           = true
-  load_balancer_type = "network"
-  subnets            = [aws_subnet.private1.id, aws_subnet.private2.id]
-
-  enable_deletion_protection = false
-
-  tags = {
-    Environment = "production"
-  }
-}
-
-resource "aws_lb_target_group" "alb_tg_redis" {
-  name        = "albwredis"
-  port        = 6379
-  protocol    = "TCP"
-  target_type = "ip"
-  vpc_id      = aws_vpc.main.id
-
-  stickiness {
-    enabled = false
-    type = "lb_cookie"
-  }
-
-  depends_on = [aws_lb.alb_redis]
-}
-
-resource "aws_lb_listener" "alb_redis_listener" {
-  load_balancer_arn = aws_lb.alb_redis.arn
-  port              = "6379"
-  protocol          = "TCP"
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.alb_tg_redis.arn
   }
 }
 

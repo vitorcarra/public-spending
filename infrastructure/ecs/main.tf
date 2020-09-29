@@ -7,6 +7,7 @@ resource "aws_ecs_cluster" "airflow_celery1" {
   }
 }
 
+data "aws_caller_identity" "current" {}
 
 ############ WEBSERVER #################
 resource "aws_ecs_task_definition" "webserver" {
@@ -38,16 +39,19 @@ resource "aws_ecs_task_definition" "webserver" {
         ],
         "mountPoints": [
           {
-              "containerPath": "./airflow/dags",
+              "containerPath": "/usr/local/airflow/dags",
               "sourceVolume": "airflow-dags-efs"
           }
         ],
+        "secrets": [
+            { "name": "POSTGRES_USER", "valueFrom": "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/prd/data/rds/postgres/airflow/user"},
+            { "name": "POSTGRES_PORT", "valueFrom": "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/prd/data/rds/postgres/airflow/port"},
+            { "name": "POSTGRES_DB", "valueFrom": "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/prd/data/rds/postgres/airflow/db-name"},
+            { "name": "POSTGRES_PASSWORD", "valueFrom": "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/prd/data/rds/postgres/airflow/password"},
+            { "name": "AIRFLOW__CORE__FERNET_KEY", "valueFrom": "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/prd/data/rds/postgres/airflow/fernet_key"}
+        ],
         "environment": [
-            { "name": "POSTGRES_USER", "value": "${var.postgres_user}"},
-            { "name": "POSTGRES_PORT", "value": "${var.postgres_port}"},
-            { "name": "POSTGRES_HOST", "value": "${var.postgres_host}"},
-            { "name": "POSTGRES_DB", "value": "${var.postgres_db}"},
-            { "name": "POSTGRES_PASSWORD", "value": "${var.postgres_password}"}
+          { "name": "POSTGRES_HOST", "value": "${var.rds_data_host}"}
         ]
     }
   ]
@@ -58,8 +62,8 @@ resource "aws_ecs_task_definition" "webserver" {
 
     efs_volume_configuration {
       file_system_id          = var.airflow_efs_id
-      root_directory          = "/"
-    }
+      transit_encryption      = "ENABLED"
+    } 
   }
 
   task_role_arn = var.role_ecs_arn
@@ -104,7 +108,7 @@ resource "aws_ecs_task_definition" "redis" {
   [
     {
         "name": "redis",
-        "image": "${var.docker_image_redis}",
+        "image": "redis:5",
         "essential": true,
         "logConfiguration": {
             "logDriver": "awslogs",
@@ -121,12 +125,15 @@ resource "aws_ecs_task_definition" "redis" {
                 "hostPort": 6379
             }
         ],
+        "secrets": [
+            { "name": "POSTGRES_USER", "valueFrom": "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/prd/data/rds/postgres/airflow/user"},
+            { "name": "POSTGRES_PORT", "valueFrom": "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/prd/data/rds/postgres/airflow/port"},
+            { "name": "POSTGRES_DB", "valueFrom": "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/prd/data/rds/postgres/airflow/db-name"},
+            { "name": "POSTGRES_PASSWORD", "valueFrom": "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/prd/data/rds/postgres/airflow/password"},
+            { "name": "AIRFLOW__CORE__FERNET_KEY", "valueFrom": "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/prd/data/rds/postgres/airflow/fernet_key"}
+        ],
         "environment": [
-            { "name": "POSTGRES_USER", "value": "${var.postgres_user}"},
-            { "name": "POSTGRES_PORT", "value": "${var.postgres_port}"},
-            { "name": "POSTGRES_HOST", "value": "${var.postgres_host}"},
-            { "name": "POSTGRES_DB", "value": "${var.postgres_db}"},
-            { "name": "POSTGRES_PASSWORD", "value": "${var.postgres_password}"}
+            { "name": "POSTGRES_HOST", "value": "${var.rds_data_host}"}
         ]
     }
   ]
@@ -142,6 +149,7 @@ resource "aws_ecs_task_definition" "redis" {
 
 resource "aws_ecs_service" "redis" {
   name            = "redis"
+  platform_version = "1.4.0"
   cluster         = aws_ecs_cluster.airflow_celery1.id
   task_definition = aws_ecs_task_definition.redis.arn
   desired_count   = 1
@@ -155,10 +163,9 @@ resource "aws_ecs_service" "redis" {
     security_groups = var.redis_sg
   }
 
-  load_balancer {
-    target_group_arn = var.alb_redis_target_group
-    container_name   = "redis"
-    container_port   = 6379
+  service_registries {
+    registry_arn = var.discovery_service_redis_arn
+    container_name = "airflow-redis"
   }
 }
 
@@ -185,19 +192,37 @@ resource "aws_ecs_task_definition" "scheduler" {
                 "awslogs-stream-prefix": "airflow-scheduler"
             }
         },
+        "mountPoints": [
+          {
+              "containerPath": "/usr/local/airflow/dags",
+              "sourceVolume": "airflow-dags-efs"
+          }
+        ],
+        "secrets": [
+            { "name": "POSTGRES_USER", "valueFrom": "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/prd/data/rds/postgres/airflow/user"},
+            { "name": "POSTGRES_PORT", "valueFrom": "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/prd/data/rds/postgres/airflow/port"},
+            { "name": "POSTGRES_DB", "valueFrom": "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/prd/data/rds/postgres/airflow/db-name"},
+            { "name": "POSTGRES_PASSWORD", "valueFrom": "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/prd/data/rds/postgres/airflow/password"},
+            { "name": "AIRFLOW__CORE__FERNET_KEY", "valueFrom": "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/prd/data/rds/postgres/airflow/fernet_key"}
+        ],
         "environment": [
-            { "name": "POSTGRES_USER", "value": "${var.postgres_user}"},
-            { "name": "POSTGRES_PORT", "value": "${var.postgres_port}"},
-            { "name": "POSTGRES_HOST", "value": "${var.postgres_host}"},
-            { "name": "POSTGRES_DB", "value": "${var.postgres_db}"},
-            { "name": "POSTGRES_PASSWORD", "value": "${var.postgres_password}"},
+            { "name": "POSTGRES_HOST", "value": "${var.rds_data_host}"},
             { "name": "EXECUTOR", "value": "Celery"},
             { "name": "LOAD_EX", "value": "n"},
-            { "name": "REDIS_HOST", "value": "${var.redis_host}"}
+            { "name": "REDIS_HOST", "value": "redis.data.local"}
         ]
     }
   ]
   TASK_DEFINITION
+
+  volume {
+    name = "airflow-dags-efs"
+
+    efs_volume_configuration {
+      file_system_id          = var.airflow_efs_id
+      transit_encryption      = "ENABLED"
+    } 
+  }
 
   task_role_arn = var.role_ecs_arn
   execution_role_arn = var.role_ecs_arn
@@ -213,6 +238,7 @@ resource "aws_ecs_service" "scheduler" {
   task_definition = aws_ecs_task_definition.scheduler.arn
   desired_count   = 1
   launch_type = "FARGATE"
+  platform_version = "1.4.0"
 
   #depends_on      = ["aws_iam_role_policy.foo"]
 
@@ -253,11 +279,26 @@ resource "aws_ecs_task_definition" "flower" {
             }
         },
         "environment": [
-            { "name": "REDIS_HOST", "value": "${var.redis_host}"}
+            { "name": "REDIS_HOST", "value": "redis.data.local"}
+        ],
+        "mountPoints": [
+          {
+              "containerPath": "/usr/local/airflow/dags",
+              "sourceVolume": "airflow-dags-efs"
+          }
         ]
     }
   ]
   TASK_DEFINITION
+
+  volume {
+    name = "airflow-dags-efs"
+
+    efs_volume_configuration {
+      file_system_id          = var.airflow_efs_id
+      transit_encryption      = "ENABLED"
+    } 
+  }
 
   task_role_arn = var.role_ecs_arn
   execution_role_arn = var.role_ecs_arn
@@ -273,6 +314,7 @@ resource "aws_ecs_service" "flower" {
   task_definition = aws_ecs_task_definition.flower.arn
   desired_count   = 1
   launch_type = "FARGATE"
+  platform_version = "1.4.0"
 
   #depends_on      = ["aws_iam_role_policy.foo"]
 
@@ -305,17 +347,35 @@ resource "aws_ecs_task_definition" "worker" {
                 "awslogs-stream-prefix": "airflow-worker"
             }
         },
+        "secrets": [
+            { "name": "POSTGRES_USER", "valueFrom": "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/prd/data/rds/postgres/airflow/user"},
+            { "name": "POSTGRES_PORT", "valueFrom": "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/prd/data/rds/postgres/airflow/port"},
+            { "name": "POSTGRES_DB", "valueFrom": "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/prd/data/rds/postgres/airflow/db-name"},
+            { "name": "POSTGRES_PASSWORD", "valueFrom": "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/prd/data/rds/postgres/airflow/password"},
+            { "name": "AIRFLOW__CORE__FERNET_KEY", "valueFrom": "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/prd/data/rds/postgres/airflow/fernet_key"}
+        ],
+        "mountPoints": [
+          {
+              "containerPath": "/usr/local/airflow/dags",
+              "sourceVolume": "airflow-dags-efs"
+          }
+        ],
         "environment": [
-            { "name": "POSTGRES_USER", "value": "${var.postgres_user}"},
-            { "name": "POSTGRES_PORT", "value": "${var.postgres_port}"},
-            { "name": "POSTGRES_HOST", "value": "${var.postgres_host}"},
-            { "name": "POSTGRES_DB", "value": "${var.postgres_db}"},
-            { "name": "POSTGRES_PASSWORD", "value": "${var.postgres_password}"},
-            { "name": "REDIS_HOST", "value": "${var.redis_host}"}
+            { "name": "POSTGRES_HOST", "value": "${var.rds_data_host}"},
+            { "name": "REDIS_HOST", "value": "redis.data.local"}
         ]
     }
   ]
   TASK_DEFINITION
+
+  volume {
+    name = "airflow-dags-efs"
+
+    efs_volume_configuration {
+      file_system_id          = var.airflow_efs_id
+      transit_encryption      = "ENABLED"
+    } 
+  }
 
   task_role_arn = var.role_ecs_arn
   execution_role_arn = var.role_ecs_arn
@@ -331,6 +391,7 @@ resource "aws_ecs_service" "worker" {
   task_definition = aws_ecs_task_definition.worker.arn
   desired_count   = 1
   launch_type = "FARGATE"
+  platform_version = "1.4.0"
 
   #depends_on      = ["aws_iam_role_policy.foo"]
 

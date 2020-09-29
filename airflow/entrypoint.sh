@@ -43,29 +43,32 @@ fi
 
 AIRFLOW__CELERY__BROKER_URL="redis://$REDIS_PREFIX$REDIS_HOST:$REDIS_PORT/1"
 
+source /usr/local/airflow/venv/bin/activate
+
+if [ -e "/requirements.txt" ]; then
+  $(command -v pip) install --upgrade -r /requirements.txt
+fi
 
 case "$1" in
   webserver)
-    if [ -e "/requirements.txt" ]; then
-      pip3 install --user --upgrade -r /requirements.txt
-    fi
-
     airflow initdb
     exec airflow webserver
     ;;
   scheduler|flower|version)
-
+    # Give the webserver time to run initdb.
+    sleep 10
     exec airflow "$@"
     ;;
   worker)
     if [ -e "/requirements.txt" ]; then
       pip3 install --user --upgrade -r /requirements.txt
     fi
-
+    # Give the webserver time to run initdb.
+    sleep 10
     exec airflow "$@"
     ;;
   *)
     # The command is something like bash, not an airflow subcommand. Just run it in the right environment.
-    exec "$@"
+    eval "$@"
     ;;
 esac

@@ -17,11 +17,19 @@ module "network" {
     region = var.aws_region
 }
 
+module "route53" {
+    source = "./route53"
+
+    vpc_id = module.network.vpc_id
+}
+
 module "efs" {
     source = "./efs"
     project_name = var.project_name
     efs_subnet_id = module.network.private_subnet_group_id1
     efs_sg_id     = module.network.efs_sg_id
+    role_ecs_name = module.iam.role_ecs_name
+    region        = var.aws_region
 }
 
 module "ecs" {
@@ -36,7 +44,6 @@ module "ecs" {
     postgres_db            = var.postgres_db
     postgres_host          = module.rds.rds_host
     docker_image_airflow   = var.docker_image_airflow
-    docker_image_redis     = var.docker_image_redis
     private_subnet_group_id1 = module.network.private_subnet_group_id1
     private_subnet_group_id2 = module.network.private_subnet_group_id2
     webserver_sg           =     module.network.webserver_sg
@@ -45,10 +52,10 @@ module "ecs" {
     flower_sg           =     module.network.flower_sg
     worker_sg           =     module.network.worker_sg
     alb_webserver_target_group = module.network.alb_webserver_target_group
-    alb_redis_target_group = module.network.alb_redis_target_group
-    redis_host             = module.network.redis_host
     airflow_efs_id           = module.efs.airflow_efs_id
     airflow_efs_access_id    =  module.efs.airflow_efs_access_id
+    rds_data_host            = module.rds.rds_host
+    discovery_service_redis_arn = module.route53.discovery_service_redis_arn
 }
 
 module "rds" {
@@ -62,4 +69,14 @@ module "rds" {
     vpc_security_group_ids = module.network.vpc_security_group_ids
     private_subnet_group_id1 = module.network.private_subnet_group_id1
     private_subnet_group_id2 = module.network.private_subnet_group_id2
+}
+
+module "ssm" {
+    source = "./ssm"
+
+    airflow_db_user = var.postgres_user
+    airflow_db_password =  var.postgres_password
+    airflow_db_name = var.postgres_db
+    airflow_db_port = var.postgres_port
+    airflow_fernet_key = var.fernet_key
 }

@@ -192,7 +192,10 @@ resource "aws_iam_policy" "policy_ecs" {
                 "rds:RestoreDBInstanceToPointInTime",
                 "logs:CreateLogStream",
                 "logs:PutLogEvents",
-                "logs:CreateLogGroup"
+                "logs:CreateLogGroup",
+                "ssm:GetParameters",
+                "secretsmanager:GetSecretValue",
+                "kms:Decrypt"
             ],
             "Resource": "*"
         }

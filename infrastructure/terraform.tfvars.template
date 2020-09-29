@@ -1,3 +1,10 @@
 aws_region = "<region>"
 aws_profile = "<profile>"
 project_name = "<project_name>"
+postgres_db = "<db_name>>"
+postgres_user = "<airflow_db_name>"
+postgres_password = "<airflow_db_pass"
+postgres_port = <airflow_db_port>
+docker_image_airflow = "<ecr_path>"
+docker_image_redis = "527562940573.dkr.ecr.us-east-2.amazonaws.com/public-spending-redis:latest"
+fernet_key = "<airflow_fernet_key>"

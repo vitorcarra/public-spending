@@ -7,7 +7,6 @@ variable "postgres_password" {}
 variable "postgres_port" {}
 variable "postgres_host" {}
 variable "docker_image_airflow" {}
-variable "docker_image_redis" {}
 variable "private_subnet_group_id1" {}
 variable "private_subnet_group_id2" {}
 variable "webserver_sg" {}
@@ -16,7 +15,7 @@ variable "scheduler_sg" {}
 variable "worker_sg" {}
 variable "flower_sg" {}
 variable "alb_webserver_target_group" {}
-variable "alb_redis_target_group" {}
-variable "redis_host" {}
 variable "airflow_efs_id" {}
 variable "airflow_efs_access_id" {}
+variable "rds_data_host" {}
+variable "discovery_service_redis_arn" {}
