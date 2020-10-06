@@ -1,0 +1,16 @@
+CREATE_TABLE = """
+DROP TABLE IF EXISTS {};
+CREATE TABLE {} (
+    {}
+);
+"""
+
+CREATE_TABLE_AS_SELECT = """
+DROP TABLE IF EXISTS {};
+CREATE TABLE {} AS {};
+"""
+
+DROP_TABLE = """
+DROP TABLE IF EXISTS {};
+"""
+
