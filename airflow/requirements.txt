@@ -17,4 +17,4 @@ pandas==1.0.5
 apache-airflow-backport-providers-amazon==2020.6.24
 apache-airflow-backport-providers-mongo==2020.6.24
 pyarrow==1.0.0
-cryptography==3.2
+cryptography==3.3.2
